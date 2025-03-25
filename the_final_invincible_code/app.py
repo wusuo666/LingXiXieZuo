@@ -24,15 +24,18 @@ class Application:
         
         # 添加欢迎页面
         self.welcome_widget = WelcomeWidget()
-        self.main_window.left_editor.addTab(self.welcome_widget, "欢迎")
+        self.main_window.editor.add_tab(self.welcome_widget, "欢迎")
+        
+        # 确保状态栏显示
+        self.main_window.statusBar.show()
+        self.main_window.statusBar.showMessage("就绪")
         
     def connect_signals(self):
         # 连接文件浏览器的双击信号
         self.file_explorer.tree_view.doubleClicked.connect(self.on_file_double_clicked)
         
         # 连接标签关闭信号
-        self.main_window.left_editor.tabCloseRequested.connect(self.on_tab_close_requested)
-        self.main_window.right_editor.tabCloseRequested.connect(self.on_tab_close_requested)
+        self.main_window.editor.main_container.tab_widget.tabCloseRequested.connect(self.on_tab_close_requested)
         
     def on_file_double_clicked(self, index):
         # 获取文件路径
@@ -58,8 +61,8 @@ class Application:
             file_name = os.path.basename(file_path)
             
             # 添加到编辑器
-            self.main_window.left_editor.addTab(editor, file_name)
-            self.main_window.left_editor.setCurrentWidget(editor)
+            index = self.main_window.editor.add_tab(editor, file_name)
+            self.main_window.editor.set_current_widget(editor)
         except Exception as e:
             print(f"打开文件失败: {e}")
     
@@ -68,7 +71,8 @@ class Application:
         sender = self.app.sender()
         
         # 关闭标签页
-        sender.removeTab(index)
+        if hasattr(sender, 'removeTab'):
+            sender.removeTab(index)
     
     def run(self):
         self.main_window.show()

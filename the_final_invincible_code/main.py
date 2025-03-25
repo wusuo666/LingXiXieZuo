@@ -1,8 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter
-from PyQt5.QtWidgets import QToolBar, QAction, QStatusBar, QTabWidget, QTreeView, QMenu
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QAction, QStatusBar, QTabWidget, QTreeView, QMenu, QPushButton
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
+from editor import Editor
+from split_editor import SplitEditorManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -12,9 +14,6 @@ class MainWindow(QMainWindow):
         
         # 创建菜单栏
         self.create_menu_bar()
-        
-        # 创建工具栏
-        self.create_tool_bar()
         
         # 创建状态栏
         self.statusBar = QStatusBar()
@@ -84,6 +83,7 @@ class MainWindow(QMainWindow):
         statusbar_action = QAction("状态栏", self)
         statusbar_action.setCheckable(True)
         statusbar_action.setChecked(True)
+        statusbar_action.triggered.connect(lambda checked: self.statusBar.setVisible(checked))
         
         view_menu.addAction(sidebar_action)
         view_menu.addAction(statusbar_action)
@@ -92,22 +92,6 @@ class MainWindow(QMainWindow):
         help_menu = menu_bar.addMenu("帮助")
         about_action = QAction("关于", self)
         help_menu.addAction(about_action)
-    
-    def create_tool_bar(self):
-        # 创建工具栏
-        self.tool_bar = QToolBar("主工具栏")
-        self.tool_bar.setIconSize(QSize(16, 16))
-        self.addToolBar(Qt.TopToolBarArea, self.tool_bar)
-        
-        # 添加工具栏按钮
-        new_action = QAction("新建", self)
-        open_action = QAction("打开", self)
-        save_action = QAction("保存", self)
-        
-        self.tool_bar.addAction(new_action)
-        self.tool_bar.addAction(open_action)
-        self.tool_bar.addAction(save_action)
-        self.tool_bar.addSeparator()
         
     def create_sidebar(self):
         # 创建侧边栏
@@ -132,27 +116,10 @@ class MainWindow(QMainWindow):
     
     def create_content_area(self):
         # 创建内容区域
-        self.content_splitter = QSplitter(Qt.Horizontal)
-        
-        # 左侧编辑区域
-        self.left_editor = QTabWidget()
-        self.left_editor.setTabsClosable(True)
-        self.left_editor.setMovable(True)
-        
-        # 右侧编辑区域
-        self.right_editor = QTabWidget()
-        self.right_editor.setTabsClosable(True)
-        self.right_editor.setMovable(True)
-        
-        # 添加到分割器
-        self.content_splitter.addWidget(self.left_editor)
-        self.content_splitter.addWidget(self.right_editor)
-        
-        # 设置初始大小
-        self.content_splitter.setSizes([600, 600])
+        self.editor = SplitEditorManager()
         
         # 添加到主布局
-        self.main_layout.addWidget(self.content_splitter)
+        self.main_layout.addWidget(self.editor)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
