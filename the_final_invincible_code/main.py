@@ -114,10 +114,16 @@ class MainWindow(QMainWindow):
         # 添加到主布局
         self.main_layout.addWidget(self.sidebar)
     
+    def on_tab_dragged(self, tab_index, drop_pos):
+        # 调用 SplitEditorManager 的 on_tab_dragged 方法处理标签拖拽逻辑
+        current_widget = self.editor.main_container.tab_widget.widget(tab_index)
+        self.editor.on_tab_dragged(tab_index, drop_pos)
+
     def create_content_area(self):
         # 创建内容区域
         self.editor = SplitEditorManager()
-        
+        self.editor.tabDragged.connect(self.on_tab_dragged)  # 修改此处为 tabDragged
+
         # 添加到主布局
         self.main_layout.addWidget(self.editor)
 
