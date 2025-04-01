@@ -1,9 +1,11 @@
 import sys
-from PyQt5.QtWidgets import QApplication
+import os
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QDir
 from main import MainWindow
 from editor import Editor, WelcomeWidget
 from file_system import FileExplorer
+from git_manager import GitManager
 
 class Application:
     def __init__(self):
@@ -22,6 +24,15 @@ class Application:
         self.main_window.sidebar.removeTab(0)  # 移除占位符
         self.main_window.sidebar.insertTab(0, self.file_explorer, "文件")
         
+        # 初始化Git管理器
+        self.git_manager = GitManager()
+        self.main_window.sidebar.removeTab(2)  # 移除Git占位符
+        self.main_window.sidebar.insertTab(2, self.git_manager, "Git")
+        
+        # 设置Git仓库路径为当前工作目录
+        current_dir = QDir.currentPath()
+        self.git_manager.set_repo_path(current_dir)
+        
         # 添加欢迎页面
         self.welcome_widget = WelcomeWidget()
         self.main_window.editor.add_tab(self.welcome_widget, "欢迎")
@@ -36,6 +47,28 @@ class Application:
         
         # 连接标签关闭信号
         self.main_window.editor.main_container.tab_widget.tabCloseRequested.connect(self.on_tab_close_requested)
+        
+        # 连接Git命令执行信号
+        self.git_manager.git_command_executed.connect(self.on_git_command_executed)
+        
+        # 连接Git菜单项信号
+        if hasattr(self.main_window, 'git_actions'):
+            self.main_window.git_actions['init_repo'].triggered.connect(self.git_manager.init_repo)
+            self.main_window.git_actions['status'].triggered.connect(self.git_manager.check_status)
+            self.main_window.git_actions['add'].triggered.connect(self.git_manager.add_files)
+            self.main_window.git_actions['commit'].triggered.connect(self.git_manager.commit_changes)
+            self.main_window.git_actions['push'].triggered.connect(self.git_manager.push_changes)
+            self.main_window.git_actions['pull'].triggered.connect(self.git_manager.pull_changes)
+            self.main_window.git_actions['branch'].triggered.connect(self.git_manager.manage_branches)
+            self.main_window.git_actions['log'].triggered.connect(self.git_manager.show_log)
+    
+    def on_git_command_executed(self, command, result):
+        # 在状态栏显示Git命令执行信息
+        self.main_window.statusBar.showMessage(f"执行: {command}")
+        
+        # 如果是目录切换，更新Git仓库路径
+        if self.file_explorer.model.rootPath() != self.git_manager.current_repo_path:
+            self.git_manager.set_repo_path(self.file_explorer.model.rootPath())
         
     def on_file_double_clicked(self, index):
         # 获取文件路径

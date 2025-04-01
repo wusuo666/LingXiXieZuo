@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from editor import Editor
 from split_editor import SplitEditorManager
+from git_manager import GitManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -75,6 +76,46 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(copy_action)
         edit_menu.addAction(paste_action)
         
+        # Git操作菜单
+        git_menu = menu_bar.addMenu("Git操作")
+        init_repo_action = QAction("初始化仓库", self)
+        status_action = QAction("查看状态", self)
+        status_action.setShortcut("Ctrl+Alt+S")
+        add_action = QAction("暂存更改", self)
+        add_action.setShortcut("Ctrl+Alt+A")
+        commit_action = QAction("提交", self)
+        commit_action.setShortcut("Ctrl+Alt+C")
+        push_action = QAction("推送", self)
+        push_action.setShortcut("Ctrl+Alt+P")
+        pull_action = QAction("拉取", self)
+        pull_action.setShortcut("Ctrl+Alt+L")
+        branch_action = QAction("分支管理", self)
+        log_action = QAction("查看日志", self)
+        log_action.setShortcut("Ctrl+Alt+G")
+        
+        git_menu.addAction(init_repo_action)
+        git_menu.addAction(status_action)
+        git_menu.addAction(add_action)
+        git_menu.addAction(commit_action)
+        git_menu.addSeparator()
+        git_menu.addAction(push_action)
+        git_menu.addAction(pull_action)
+        git_menu.addSeparator()
+        git_menu.addAction(branch_action)
+        git_menu.addAction(log_action)
+        
+        # 保存Git操作菜单项，以便在app.py中连接信号
+        self.git_actions = {
+            'init_repo': init_repo_action,
+            'status': status_action,
+            'add': add_action,
+            'commit': commit_action,
+            'push': push_action,
+            'pull': pull_action,
+            'branch': branch_action,
+            'log': log_action
+        }
+        
         # 视图菜单
         view_menu = menu_bar.addMenu("视图")
         sidebar_action = QAction("侧边栏", self)
@@ -106,6 +147,10 @@ class MainWindow(QMainWindow):
         # 搜索标签
         self.search_widget = QWidget()
         self.sidebar.addTab(self.search_widget, "搜索")
+        
+        # Git标签
+        self.git_widget = QWidget()
+        self.sidebar.addTab(self.git_widget, "Git")
         
         # 扩展标签
         self.extensions_widget = QWidget()
