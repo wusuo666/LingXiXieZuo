@@ -1,9 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QAction, QMenu
 from PyQt5.QtCore import QDir
 from main import MainWindow
 from editor import Editor, WelcomeWidget
 from file_system import FileExplorer
+from mind_map import MindMap
 
 class Application:
     def __init__(self):
@@ -25,6 +26,9 @@ class Application:
         # 添加欢迎页面
         self.welcome_widget = WelcomeWidget()
         self.main_window.left_editor.addTab(self.welcome_widget, "欢迎")
+        
+        # 添加思维导图按钮到工具栏
+        self.add_mind_map_button()
         
     def connect_signals(self):
         # 连接文件浏览器的双击信号
@@ -69,6 +73,20 @@ class Application:
         
         # 关闭标签页
         sender.removeTab(index)
+    
+    def add_mind_map_button(self):
+        # 添加思维导图按钮到工具栏
+        mind_map_action = QAction("思维导图", self.main_window)
+        mind_map_action.triggered.connect(self.create_mind_map)
+        self.main_window.tool_bar.addAction(mind_map_action)
+    
+    def create_mind_map(self):
+        # 创建思维导图
+        mind_map = MindMap()
+        
+        # 添加到编辑器
+        self.main_window.left_editor.addTab(mind_map, "思维导图")
+        self.main_window.left_editor.setCurrentWidget(mind_map)
     
     def run(self):
         self.main_window.show()
