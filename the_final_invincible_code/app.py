@@ -6,10 +6,15 @@ from main import MainWindow
 from editor import Editor, WelcomeWidget
 from file_system import FileExplorer
 from git_manager import GitManager
+from style import Style
 
 class Application:
     def __init__(self):
         self.app = QApplication(sys.argv)
+        
+        # 应用深色主题
+        Style.apply_dark_theme(self.app)
+        
         self.main_window = MainWindow()
         
         # 初始化组件

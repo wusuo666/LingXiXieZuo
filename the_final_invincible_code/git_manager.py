@@ -2,8 +2,9 @@ import os
 import git
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QComboBox, QListWidget, QListWidgetItem, QSplitter, QToolBar, QAction, QStatusBar, QMessageBox, QDialog, QLineEdit, QProgressBar
 from PyQt5.QtCore import Qt, pyqtSignal, QProcess, QTimer
-from PyQt5.QtGui import QIcon, QColor, QMovie
+from PyQt5.QtGui import QIcon, QColor, QMovie, QFont
 import time
+from style import Style
 
 class GitManager(QWidget):
     """Git管理器，用于执行Git命令并显示结果"""
@@ -26,22 +27,50 @@ class GitManager(QWidget):
         # 创建主布局
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(5, 5, 5, 5)
+        self.layout.setSpacing(5)
+        
+        # 设置背景色
+        self.setStyleSheet(f"background-color: {Style.DARKER_BG};")
+        
+        # 设置字体
+        font = QFont()
+        font.setFamily(Style.UI_FONT_FAMILY.split(',')[0].strip())
+        font.setPointSize(Style.UI_FONT_SIZE)
         
         # 创建顶部信息区域
         self.info_layout = QHBoxLayout()
+        self.info_layout.setContentsMargins(0, 0, 0, 0)
+        self.info_layout.setSpacing(10)
+        
+        # 设置分支和仓库标签样式
         self.branch_label = QLabel("分支: 未选择")
+        self.branch_label.setFont(font)
+        self.branch_label.setStyleSheet(f"color: {Style.TEXT_COLOR}; padding: 2px 5px;")
+        
         self.repo_label = QLabel("仓库: 未选择")
+        self.repo_label.setFont(font)
+        self.repo_label.setStyleSheet(f"color: {Style.TEXT_COLOR}; padding: 2px 5px;")
         
         # 创建加载动画标签
         self.loading_label = QLabel()
         self.loading_label.setFixedSize(20, 20)
         self.loading_label.setVisible(False)
+        self.loading_label.setStyleSheet("background-color: transparent;")
         
         # 创建进度条
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)  # 设置为不确定模式
-        self.progress_bar.setFixedHeight(5)
+        self.progress_bar.setFixedHeight(3)
         self.progress_bar.setVisible(False)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                background-color: {Style.DARKER_BG};
+                border: none;
+            }}
+            QProgressBar::chunk {{
+                background-color: #007acc;
+            }}
+        """)
         
         self.info_layout.addWidget(self.branch_label)
         self.info_layout.addWidget(self.repo_label)
@@ -56,17 +85,60 @@ class GitManager(QWidget):
         # 创建文件状态区域
         self.status_widget = QWidget()
         self.status_layout = QVBoxLayout(self.status_widget)
+        self.status_layout.setContentsMargins(0, 0, 0, 0)
+        self.status_layout.setSpacing(5)
+        
         self.status_label = QLabel("文件状态:")
+        self.status_label.setFont(font)
+        self.status_label.setStyleSheet(f"color: {Style.INACTIVE_TEXT}; font-weight: bold; padding: 2px;")
+        
         self.status_list = QListWidget()
+        self.status_list.setFont(font)
+        self.status_list.setStyleSheet(f"""
+            QListWidget {{
+                background-color: {Style.DARKER_BG};
+                border: 1px solid {Style.BORDER_COLOR};
+                border-radius: 2px;
+                padding: 2px;
+            }}
+            QListWidget::item {{
+                padding: 4px;
+                border-bottom: 1px solid {Style.BORDER_COLOR};
+            }}
+            QListWidget::item:selected {{
+                background-color: {Style.SELECTION_BG};
+            }}
+            QListWidget::item:hover:!selected {{
+                background-color: #2a2d2e;
+            }}
+        """)
+        
         self.status_layout.addWidget(self.status_label)
         self.status_layout.addWidget(self.status_list)
         
         # 创建命令执行结果区域
         self.output_widget = QWidget()
         self.output_layout = QVBoxLayout(self.output_widget)
+        self.output_layout.setContentsMargins(0, 0, 0, 0)
+        self.output_layout.setSpacing(5)
+        
         self.output_label = QLabel("命令输出:")
+        self.output_label.setFont(font)
+        self.output_label.setStyleSheet(f"color: {Style.INACTIVE_TEXT}; font-weight: bold; padding: 2px;")
+        
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
+        self.output_text.setFont(QFont(Style.CODE_FONT_FAMILY.split(',')[0].strip(), Style.CODE_FONT_SIZE))
+        self.output_text.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {Style.EDITOR_BG};
+                color: {Style.TEXT_COLOR};
+                border: 1px solid {Style.BORDER_COLOR};
+                border-radius: 2px;
+                selection-background-color: {Style.HIGHLIGHT_BG};
+            }}
+        """)
+        
         self.output_layout.addWidget(self.output_label)
         self.output_layout.addWidget(self.output_text)
         
@@ -77,6 +149,31 @@ class GitManager(QWidget):
         
         # 创建操作工具栏
         self.toolbar = QToolBar()
+        self.toolbar.setStyleSheet(f"""
+            QToolBar {{
+                background-color: {Style.DARKER_BG};
+                border: none;
+                border-top: 1px solid {Style.BORDER_COLOR};
+                border-bottom: 1px solid {Style.BORDER_COLOR};
+                spacing: 2px;
+                padding: 2px;
+            }}
+            QToolButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 2px;
+                padding: 4px 8px;
+                color: {Style.TEXT_COLOR};
+            }}
+            QToolButton:hover {{
+                background-color: {Style.SELECTION_BG};
+            }}
+            QToolButton:pressed {{
+                background-color: {Style.HIGHLIGHT_BG};
+            }}
+        """)
+        
+        # 创建操作按钮
         self.init_action = QAction("初始化仓库", self)
         self.status_action = QAction("状态", self)
         self.add_action = QAction("暂存更改", self)
@@ -85,6 +182,11 @@ class GitManager(QWidget):
         self.pull_action = QAction("拉取", self)
         self.branch_action = QAction("分支", self)
         self.log_action = QAction("日志", self)
+        
+        # 设置按钮字体
+        for action in [self.init_action, self.status_action, self.add_action, self.commit_action,
+                      self.push_action, self.pull_action, self.branch_action, self.log_action]:
+            action.setFont(font)
         
         self.toolbar.addAction(self.init_action)
         self.toolbar.addAction(self.status_action)
