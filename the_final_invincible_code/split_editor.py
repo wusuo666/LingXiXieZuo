@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QSplitter, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QToolButton, QMenu, QTabBar, QApplication
-from PyQt5.QtCore import Qt, pyqtSignal, QEvent, QMimeData, QPoint, QRect
+from PyQt5.QtCore import Qt, pyqtSignal, QEvent, QMimeData, QPoint
 from PyQt5.QtGui import QIcon, QDrag, QCursor
 from editor import Editor
 
@@ -50,13 +50,8 @@ class DraggableTabBar(QTabBar):
         # 计算移动距离
         distance = (event.pos() - self.drag_start_pos).manhattanLength()
         
-        # 增加校验：仅在拖拽距离超过阈值且未松开鼠标时触发拖拽
+        # 如果移动距离超过拖拽阈值，则开始拖拽
         if distance >= QApplication.startDragDistance():
-            # 校验拖拽的目标位置是否有效
-            target_pos = self.mapToGlobal(event.pos())
-            if not self.parent().geometry().contains(self.parent().mapFromGlobal(target_pos)):
-                return
-            
             # 创建拖拽对象
             drag = QDrag(self)
             
@@ -75,9 +70,15 @@ class DraggableTabBar(QTabBar):
             self.drag_start_pos = None
             self.drag_tab_index = -1
         
-        # 防止误触发其他逻辑
         super().mouseMoveEvent(event)
-
+    
+    def dragEnterEvent(self, event):
+        """拖拽进入事件"""
+        # 如果是标签页拖拽，则接受
+        if event.mimeData().hasText() and event.mimeData().text().startswith("tab:"):
+            event.accept()
+            event.acceptProposedAction()
+    
     def dropEvent(self, event):
         """拖拽放下事件"""
         # 如果是标签页拖拽，则接受
@@ -89,7 +90,7 @@ class DraggableTabBar(QTabBar):
             if drop_index == -1:
                 drop_index = self.count()
             # 发出信号通知父组件处理标签转移
-            self.parent().window().on_tab_dragged(drag_tab_index, self.mapToGlobal(event.pos()))
+            self.parent().parent().on_tab_dragged(drag_tab_index, self.mapToGlobal(event.pos()))
             event.acceptProposedAction()
 
 class EditorContainer(QWidget):
@@ -103,42 +104,6 @@ class EditorContainer(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
-        
-        # 创建工具栏和标签页
-        self.toolbar_layout = QHBoxLayout()
-        self.toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.setMovable(True)
-        
-        # 创建拆分按钮
-        self.split_button = SplitButton()
-        self.toolbar_layout.addStretch()
-        self.toolbar_layout.addWidget(self.split_button)
-        
-        # 添加到布局
-        self.layout.addLayout(self.toolbar_layout)
-        self.layout.addWidget(self.tab_widget)
-        
-        # 设置接受拖放
-        self.setAcceptDrops(True)
-        self.setMouseTracking(True)
-        
-        # 连接信号
-        self.tab_widget.tabCloseRequested.connect(self.on_tab_close_requested)
-        self.split_button.split_horizontal_action.triggered.connect(self.on_split_horizontal)
-        self.split_button.split_vertical_action.triggered.connect(self.on_split_vertical)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasText() and event.mimeData().text().startswith('tab:'):
-            event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        if event.mimeData().hasText() and event.mimeData().text().startswith('tab:'):
-            tab_index = int(event.mimeData().text().split(':')[1])
-            # 通过SplitEditorManager处理标签拖拽
-            self.parent().window().on_tab_dragged(tab_index, self.mapToGlobal(event.pos()))
         
         # 创建工具栏
         self.toolbar_layout = QHBoxLayout()
@@ -187,11 +152,8 @@ class EditorContainer(QWidget):
     def on_split_vertical(self):
         """垂直拆分"""
         self.split_requested.emit(self, Qt.Vertical)
-        
 
-
-class SplitEditorManager(QSplitter):
-    tabDragged = pyqtSignal(int, QPoint)
+class SplitEditorManager(QWidget):
     """拆分编辑器管理器，用于管理所有拆分的编辑器容器"""
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -339,38 +301,27 @@ class SplitEditorManager(QSplitter):
             container.setParent(None)
             container.deleteLater()
 
-    def on_tab_dragged(self, drag_tab_index, global_pos):
-        """处理标签拖拽事件"""
+    def on_tab_dragged(self, tab_index, global_pos):
+        """处理标签页拖拽事件"""
+        # 获取源容器
+        source_container = self.sender()
+        if isinstance(source_container, DraggableTabBar):
+            source_container = source_container.parent()
+        if not hasattr(source_container, 'tab_widget'):
+            source_container = self.find_parent_editor_container(source_container)
+        
         # 查找目标容器
         target_container = self.find_drop_container(global_pos)
-        if target_container:
-            # 获取源容器和标签内容
-            src_container = self.find_tab_container(drag_tab_index)
-            if src_container and src_container != target_container:  # 确保源和目标不同
-                widget = src_container.tab_widget.widget(drag_tab_index)
-                title = src_container.tab_widget.tabText(drag_tab_index)
-                
-                # 转移标签页
-                src_container.tab_widget.removeTab(drag_tab_index)
-                target_container.tab_widget.addTab(widget, title)
-                target_container.tab_widget.setCurrentWidget(widget)
-        else:
-            # 如果未找到有效目标容器，忽略拖拽
-            return
-
-    def find_drop_container(self, global_pos):
-        """根据全局坐标查找放置目标容器"""
-        for container in self.containers:
-            if container.geometry().contains(container.mapFromGlobal(global_pos)):
-                return container
-        return None
-
-    def find_tab_container(self, tab_index):
-        """查找包含指定标签索引的容器"""
-        for container in self.containers:
-            if tab_index < container.tab_widget.count():
-                return container
-        return None
+        
+        if target_container and target_container != source_container:
+            # 获取标签页内容
+            widget = source_container.tab_widget.widget(tab_index)
+            title = source_container.tab_widget.tabText(tab_index)
+            
+            # 转移标签页
+            source_container.tab_widget.removeTab(tab_index)
+            target_container.add_tab(widget, title)
+            target_container.set_current_widget(widget)
 
     def find_parent_editor_container(self, widget):
         """向上查找EditorContainer父组件"""
@@ -382,27 +333,9 @@ class SplitEditorManager(QSplitter):
         return None
 
     def find_drop_container(self, global_pos):
-        """改进的容器查找算法：考虑拆分器布局和可视化区域"""
-        for container in reversed(self.containers):  # 从最上层开始查找
-            # 转换坐标到容器坐标系
-            local_rect = container.rect()
-            global_rect = QRect(container.mapToGlobal(local_rect.topLeft()),
-                              container.mapToGlobal(local_rect.bottomRight()))
-            
-            # 排除不可见或隐藏的容器
-            if not container.isVisible() or global_rect.isEmpty():
-                continue
-            
-            # 精确计算可拖放区域（标签栏+中央区域）
-            tab_bar = container.tab_widget.tabBar()
-            tab_bar_global_rect = QRect(tab_bar.mapToGlobal(tab_bar.rect().topLeft()),
-                                      tab_bar.mapToGlobal(tab_bar.rect().bottomRight()))
-            
-            content_global_rect = QRect(container.mapToGlobal(QPoint(0, tab_bar.height())),
-                                      container.mapToGlobal(QPoint(container.width(), container.height())))
-            
-            # 合并有效区域并检查坐标
-            combined_rect = tab_bar_global_rect.united(content_global_rect)
-            if combined_rect.contains(global_pos):
+        """根据坐标查找有效的放置容器"""
+        for container in self.containers:
+            local_pos = container.mapFromGlobal(global_pos)
+            if container.rect().contains(local_pos):
                 return container
         return None
