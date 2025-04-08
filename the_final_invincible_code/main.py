@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QAction, QStatusBar, QTabWidget, QTreeView, QMenu, QPushButton
+from PyQt5.QtWidgets import QAction, QStatusBar, QTabWidget, QTreeView, QMenu, QPushButton, QToolBar
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from editor import Editor
