@@ -47,8 +47,8 @@ class Application:
         self.main_window.statusBar.show()
         self.main_window.statusBar.showMessage("就绪")
         
-        # 添加思维导图按钮到工具栏
-        self.add_mind_map_button()
+        # 初始化思维导图到侧边栏
+        self.init_mind_map()
         
     def connect_signals(self):
         # 连接文件浏览器的双击信号
@@ -70,6 +70,14 @@ class Application:
             self.main_window.git_actions['pull'].triggered.connect(self.git_manager.pull_changes)
             self.main_window.git_actions['branch'].triggered.connect(self.git_manager.manage_branches)
             self.main_window.git_actions['log'].triggered.connect(self.git_manager.show_log)
+        
+        # 添加思维导图菜单项到主窗口的视图菜单
+        if hasattr(self.main_window, 'menuBar'):
+            view_menu = self.main_window.menuBar().actions()[3].menu()  # 视图菜单是第四个菜单
+            mind_map_action = QAction("创建思维导图", self.main_window)
+            mind_map_action.triggered.connect(self.create_mind_map)
+            view_menu.addSeparator()
+            view_menu.addAction(mind_map_action)
     
     def on_git_command_executed(self, command, result):
         # 在状态栏显示Git命令执行信息
@@ -116,19 +124,29 @@ class Application:
         if hasattr(sender, 'removeTab'):
             sender.removeTab(index)
     
-    def add_mind_map_button(self):
-        # 添加思维导图按钮到工具栏
-        mind_map_action = QAction("思维导图", self.main_window)
-        mind_map_action.triggered.connect(self.create_mind_map)
-        self.main_window.tool_bar.addAction(mind_map_action)
+    def init_mind_map(self):
+        # 创建思维导图按钮
+        self.mind_map_action = QAction("思维导图", self.main_window)
+        self.mind_map_action.triggered.connect(self.create_mind_map)
+        
+        # 添加到视图菜单
+        if hasattr(self.main_window, 'menuBar'):
+            view_menu = self.main_window.menuBar().actions()[3].menu()  # 视图菜单是第四个菜单
+            view_menu.addSeparator()
+            view_menu.addAction(self.mind_map_action)
     
     def create_mind_map(self):
         # 创建思维导图
         mind_map = MindMap()
         
-        # 添加到编辑器
-        self.main_window.left_editor.addTab(mind_map, "思维导图")
-        self.main_window.left_editor.setCurrentWidget(mind_map)
+        # 添加到主编辑器容器
+        index = self.main_window.editor.add_tab(mind_map, "思维导图")
+        self.main_window.editor.set_current_widget(mind_map)
+        
+        # 更新状态栏
+        self.main_window.statusBar.showMessage("已创建思维导图")
+        
+        return mind_map
     
     def run(self):
         self.main_window.show()

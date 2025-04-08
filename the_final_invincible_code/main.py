@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout
-from PyQt5.QtWidgets import QAction, QStatusBar, QTabWidget, QTreeView, QMenu, QPushButton
+from PyQt5.QtWidgets import QAction, QStatusBar, QTabWidget, QTreeView, QMenu, QPushButton, QToolBar
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from editor import Editor
@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         # 创建内容区域
         self.editor = SplitEditorManager()
         self.editor.tabDragged.connect(self.on_tab_dragged)  # 修改此处为 tabDragged
-
+        
         # 添加到主布局
         self.main_layout.addWidget(self.editor)
 
