@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         # 创建内容区域
         self.editor = SplitEditorManager()
         self.editor.tabDragged.connect(self.on_tab_dragged)  # 修改此处为 tabDragged
-        
+
         # 添加到主布局
         self.main_layout.addWidget(self.editor)
 
